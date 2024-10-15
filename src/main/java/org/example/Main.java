@@ -39,12 +39,12 @@ public class Main extends JFrame {
 // Create sliders for offset in x and y
         xOffsetSlider = new JSlider(JSlider.HORIZONTAL, -500, 500, 0);
         yOffsetSlider = new JSlider(JSlider.HORIZONTAL, -500, 500, 0);
-        zOffsetSlider = new JSlider(JSlider.HORIZONTAL, 1, 100, 1);
+        zOffsetSlider = new JSlider(JSlider.HORIZONTAL, -500, 500, 0);
 
 // Create sliders for scale in x, y, z
-        xScaleSlider = new JSlider(JSlider.HORIZONTAL, 25, 200, 25);
-        yScaleSlider = new JSlider(JSlider.HORIZONTAL, 25, 200, 25);
-        zScaleSlider = new JSlider(JSlider.HORIZONTAL, 25, 200, 25);
+        xScaleSlider = new JSlider(JSlider.HORIZONTAL, 10, 100, 10);
+        yScaleSlider = new JSlider(JSlider.HORIZONTAL, 10, 100, 10);
+        zScaleSlider = new JSlider(JSlider.HORIZONTAL, 10, 100, 10);
 
 // Configure the new sliders
         sliderPanel.setLayout(new BoxLayout(sliderPanel, BoxLayout.Y_AXIS));
@@ -53,7 +53,9 @@ public class Main extends JFrame {
         yScaleSlider.setMajorTickSpacing(1);
         yScaleSlider.setMinorTickSpacing(1);
         yScaleSlider.setPaintTicks(true);
-
+        zScaleSlider.setMajorTickSpacing(1);
+        zScaleSlider.setMinorTickSpacing(1);
+        zScaleSlider.setPaintTicks(true);
 
         xOffsetSlider.setMajorTickSpacing(10);
         xOffsetSlider.setMinorTickSpacing(1);
@@ -61,6 +63,9 @@ public class Main extends JFrame {
         yOffsetSlider.setMajorTickSpacing(10);
         yOffsetSlider.setMinorTickSpacing(1);
         yOffsetSlider.setPaintTicks(true);
+        zOffsetSlider.setMajorTickSpacing(10);
+        zOffsetSlider.setMinorTickSpacing(1);
+        zOffsetSlider.setPaintTicks(true);
 
         // Add labels to the sliders
         JLabel xLabel = new JLabel("X Rotation:");
@@ -68,8 +73,10 @@ public class Main extends JFrame {
         JLabel zLabel = new JLabel("Z Rotation:");
         JLabel xScaleLabel = new JLabel("X Scale:");
         JLabel yScaleLabel = new JLabel("Y Scale:");
+        JLabel zScaleLabel = new JLabel("Z Scale:");
         JLabel xOffsetLabel = new JLabel("X Offset:");
         JLabel yOffsetLabel = new JLabel("Y Offset:");
+        JLabel zOffsetLabel = new JLabel("Z Offset:");
 
         // Add ChangeListener to the sliders
         xSlider.addChangeListener(e -> panel.setXRotation(xSlider.getValue()));
@@ -77,8 +84,19 @@ public class Main extends JFrame {
         zSlider.addChangeListener(e -> panel.setZRotation(zSlider.getValue()));
         xScaleSlider.addChangeListener(e -> panel.setXScale(xScaleSlider.getValue()));
         yScaleSlider.addChangeListener(e -> panel.setYScale(yScaleSlider.getValue()));
-        xOffsetSlider.addChangeListener(e -> panel.setXOffset(xOffsetSlider.getValue()));
-        yOffsetSlider.addChangeListener(e -> panel.setYOffset(yOffsetSlider.getValue()));
+        zScaleSlider.addChangeListener(e -> panel.setZScale(zScaleSlider.getValue()));
+        xOffsetSlider.addChangeListener(e -> {
+            panel.setXOffset(xOffsetSlider.getValue());
+            panel.repaint();
+        });
+        yOffsetSlider.addChangeListener(e -> {
+            panel.setYOffset(yOffsetSlider.getValue());
+            panel.repaint();
+        });
+        zOffsetSlider.addChangeListener(e -> {
+            panel.setZOffset(zOffsetSlider.getValue());
+            panel.repaint();
+        });
 
         // Add labels and sliders to the new panel
         sliderPanel.add(xLabel);
@@ -102,10 +120,14 @@ public class Main extends JFrame {
         sliderPanel.add(xScaleSlider);
         sliderPanel.add(yScaleLabel);
         sliderPanel.add(yScaleSlider);
+        sliderPanel.add(zScaleLabel);
+        sliderPanel.add(zScaleSlider);
         sliderPanel.add(xOffsetLabel);
         sliderPanel.add(xOffsetSlider);
         sliderPanel.add(yOffsetLabel);
         sliderPanel.add(yOffsetSlider);
+        sliderPanel.add(zOffsetLabel);
+        sliderPanel.add(zOffsetSlider);
 
         // Add the Drawer panel and the slider panel to the frame
         this.add(panel, BorderLayout.CENTER);
@@ -124,10 +146,12 @@ public class Main extends JFrame {
             xSlider.setValue(0);
             ySlider.setValue(0);
             zSlider.setValue(0);
-            xScaleSlider.setValue(25);
-            yScaleSlider.setValue(25);
+            xScaleSlider.setValue(10);
+            yScaleSlider.setValue(10);
+            zScaleSlider.setValue(10);
             xOffsetSlider.setValue(100);
             yOffsetSlider.setValue(100);
+            zOffsetSlider.setValue(100);
             panel.setXOffset(50);
             panel.setYOffset(50);
             panel.setXRotation(10);
@@ -157,12 +181,12 @@ public class Main extends JFrame {
                             panel.setYOffset(yo += randomYOffset);
                         }
 
-                        panel.initSceneVerticles();
+                        panel.initSceneVerticles(true);
 
                         Thread.sleep(100);
 
                         SwingUtilities.invokeAndWait(() -> {
-                            panel.initSceneVerticles();
+                            panel.initSceneVerticles(true);
                             panel.repaint();
                         });
                     }

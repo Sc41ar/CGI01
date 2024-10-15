@@ -1,7 +1,5 @@
 package org.example;
 
-import org.example.Vector;
-
 public class Matrix {
     public static double[][] multiply(double[][] a, double[][] b) {
         int n = a.length;

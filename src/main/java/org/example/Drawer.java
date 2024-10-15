@@ -94,62 +94,63 @@ public class Drawer extends JPanel {
     private double sz;
     private double offsetX;
     private double offsetY;
+    private double offsetZ;
 
-    public static double getOriginy() {
-        return Originy;
-    }
+    private double[][] rotationMatrix;
+    private double[][] projectionMatrix;
 
-    public static void setOriginy(double originy) {
-        Originy = originy;
-    }
-
-    public static double getOriginz() {
-        return Originz;
-    }
-
-    public static void setOriginz(double originz) {
-        Originz = originz;
-    }
-
-    public static double getOriginx() {
-        return Originx;
-    }
-
-    public static void setOriginx(double originx) {
-        var delta = originx - Originx;
-        Originx = originx;
-
-    }
-
-    public void initSceneVerticles() {
+    public void initSceneVerticles(boolean isDoubleRotation) {
         // The rest of the method remains the same
 
         // Clear the sceneVerticles list before adding new vertices
         sceneVerticles.clear();
 
+        Vector center = calculateCenter();
+
         // Loop through each vertex
         for (int i = 0; i < vertices.length; i++) {
             Vector vertex = vertices[i];
 
+            if (isDoubleRotation) {
+                vertex = Matrix.multiplyVector(Matrix.getRotationX(angleX, center.getX(), center.getX(), center.getZ()), vertex);
+                vertex = Matrix.multiplyVector(Matrix.getRotationY(angleY, center.getX(), center.getY(), center.getZ()), vertex);
+                vertex = Matrix.multiplyVector(Matrix.getRotationZ(angleZ, center.getX(), center.getY(), center.getZ()), vertex);
+            }
             // Apply rotation transformations
-            vertex = Matrix.multiplyVector(Matrix.getRotationX(angleX, 0, 0, 0), vertex);
             vertex = Matrix.multiplyVector(Matrix.getRotationX(angleX), vertex);
             vertex = Matrix.multiplyVector(Matrix.getRotationY(angleY), vertex);
-            vertex = Matrix.multiplyVector(Matrix.getRotationY(angleY, 0, 0, 0), vertex);
-            vertex = Matrix.multiplyVector(Matrix.getRotationZ(angleZ, 0, 0, 0), vertex);
             vertex = Matrix.multiplyVector(Matrix.getRotationZ(angleZ), vertex);
 
             // Apply scaling transformation
             vertex = Matrix.multiplyVector(Matrix.getScale(sx, sy, sz), vertex);
 
             // Apply translation transformation
-            vertex = Matrix.multiplyVector(Matrix.getTranslation(offsetX, offsetY, 1), vertex);
+            vertex = Matrix.multiplyVector(Matrix.getTranslation(offsetX, offsetY, offsetZ), vertex);
 
             // Add the transformed vertex to the sceneVerticles list
             sceneVerticles.add(vertex);
         }
 
 
+    }
+
+    private Vector calculateCenter() {
+        double sumX = 0;
+        double sumY = 0;
+        double sumZ = 0;
+
+        for (Vector vertex : vertices) {
+            sumX += vertex.getX();
+            sumY += vertex.getY();
+            sumZ += vertex.getZ();
+        }
+
+        int numVertices = vertices.length;
+        double centerX = sumX / numVertices;
+        double centerY = sumY / numVertices;
+        double centerZ = sumZ / numVertices;
+
+        return new Vector(centerX, centerY, centerZ);
     }
 
     public void setAngleX(double angleX) {
@@ -187,18 +188,52 @@ public class Drawer extends JPanel {
         long startTime = System.nanoTime();
 
         for (var edge : edges) {
+            var firstProjection = project(sceneVerticles.get(edge[0]).getX(),
+                    sceneVerticles.get(edge[0]).getY(),
+                    sceneVerticles.get(edge[0]).getZ());
+
+            var secondProjection = project(sceneVerticles.get(edge[1]).getX(),
+                    sceneVerticles.get(edge[1]).getY(),
+                    sceneVerticles.get(edge[1]).getZ());
             g.drawLine(
-                    convertX(sceneVerticles.get(edge[0]).getX()),
-                    convertY(sceneVerticles.get(edge[0]).getY()),
-                    convertX(sceneVerticles.get(edge[1]).getX()),
-                    convertY(sceneVerticles.get(edge[1]).getY())
+                    convertX(firstProjection[0]),
+                    convertY(firstProjection[1]),
+                    convertX(secondProjection[0]),
+                    convertY(secondProjection[1])
             );
         }
-        g.drawOval(convertX(getOriginx() * 50), convertY(getOriginy() * 50), 5, 5);
+
+        int width = getWidth();
+        int height = getHeight();
+
+        // Ось X
+        g.setColor(Color.RED);
+        g.drawLine(0, height / 2, width, height / 2);
+
+        // Ось Y
+        g.setColor(Color.GREEN);
+        g.drawLine(width / 2, 0, width / 2, height);
+
+        g.setColor(Color.BLUE);
+        g.drawLine(0, height, width, 0);
+
+        // Подписи
+        g.setColor(Color.BLACK);
+        g.drawString("X", width / 2 + 20, height / 2);
+        g.drawString("Y", width / 2, height / 2 - 20);
+        g.drawString("Z", width / 2, height / 2 + 20);
+
 
         long endTime = System.nanoTime();
         long duration = (endTime - startTime);  // divide by 1000000 to get milliseconds.
         System.out.println("Drawing operation took " + duration + " nanoseconds");
+    }
+
+    private double[] project(double x, double y, double z) {
+        Vector point = new Vector(x, y, z, 1);
+        Vector rotatedPoint = Matrix.multiplyVector(rotationMatrix, point);
+        Vector projectedPoint = Matrix.multiplyVector(projectionMatrix, rotatedPoint);
+        return new double[]{projectedPoint.getX(), projectedPoint.getY()};
     }
 
     public int convertX(double x3d) {
@@ -212,52 +247,84 @@ public class Drawer extends JPanel {
     }
 
     public Drawer() {
-        this.sx = 25;
-        this.sy = 25;
-        this.sz = 0;
-        this.offsetX = 0;
-        this.offsetY = 0;
+        double angleRad = Math.toRadians(0);
+
+
+        this.sx = 10;
+        this.sy = 10;
+        this.sz = 10;
         this.angleX = 0;
         this.angleY = 0;
         this.angleZ = 0;
-        initSceneVerticles();
+
+        rotationMatrix = new double[][]{
+                {Math.cos(angleRad), 0, Math.sin(angleRad), 0},
+                {0, 1, 0, 0},
+                {-Math.sin(angleRad), 0, Math.cos(angleRad), 0},
+                {0, 0, 0, 1}
+        };
+
+        double sqrt3 = Math.sqrt(3);
+
+        // Матрица ортографического проецирования
+        projectionMatrix = new double[][]{
+                {1, 0, -1 / sqrt3, 0},
+                {0, 1, -1 / sqrt3, 0},
+                {0, 0, 0, 0},
+                {0, 0, 0, 1}
+        };
+
+        initSceneVerticles(false);
+    }
+
+    public void setZOffset(double value) {
+        value = value / 10;
+        var delta = value - offsetZ;
+        this.offsetZ = value;
+
+        for (var vertex : vertices) {
+            vertex.setZ(vertex.getZ() + delta);
+        }
+
+
+        initSceneVerticles(false);
     }
 
 
     public void setXRotation(double value) {
         this.angleX = value;
-        initSceneVerticles();
+        initSceneVerticles(false);
         repaint();
     }
 
     public void setYRotation(double value) {
         this.angleY = value;
-        initSceneVerticles();
+        initSceneVerticles(false);
         repaint();
 
     }
 
     public void setZRotation(double value) {
         this.angleZ = value;
-        initSceneVerticles();
+        initSceneVerticles(false);
         repaint();
 
     }
 
     public void setXScale(double value) {
         this.sx = value;
-        initSceneVerticles();
+        initSceneVerticles(false);
         repaint();
     }
 
     public void setYScale(double value) {
         this.sy = value;
-        initSceneVerticles();
+        initSceneVerticles(false);
         repaint();
     }
 
     public void setXOffset(double value) {
-        value = value / 25;
+        value = value / 10;
         var delta = value - offsetX;
         this.offsetX = value;
 
@@ -265,12 +332,11 @@ public class Drawer extends JPanel {
             vertex.setX(vertex.getX() + delta);
         }
 
-
-        initSceneVerticles();
+        initSceneVerticles(false);
     }
 
     public void setYOffset(double value) {
-        value = value / 25;
+        value = value / 10;
         var delta = value - offsetY;
         this.offsetY = value;
 
@@ -278,9 +344,8 @@ public class Drawer extends JPanel {
             vertex.setY(vertex.getY() + delta);
         }
 
-        initSceneVerticles();
+        initSceneVerticles(false);
     }
-
 
     public double getXOffset() {
         return this.offsetX;
@@ -290,5 +355,9 @@ public class Drawer extends JPanel {
         return this.offsetY;
     }
 
-
+    public void setZScale(int value) {
+        this.sz = value;
+        initSceneVerticles(false);
+        repaint();
+    }
 }
