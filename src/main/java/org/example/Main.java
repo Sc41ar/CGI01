@@ -2,12 +2,6 @@ package org.example;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.util.*;
-import java.util.List;
 
 public class Main extends JFrame {
     private Drawer panel;
@@ -132,80 +126,11 @@ public class Main extends JFrame {
         // Add the Drawer panel and the slider panel to the frame
         this.add(panel, BorderLayout.CENTER);
         this.add(sliderPanel, BorderLayout.LINE_END);
-        panel.invalidate();
+
 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setVisible(true);
-
-
-        JButton button = new JButton("Rotation");
-
-        // Add an ActionListener to the button
-        button.addActionListener(e -> {
-            // Reset the sliders to their default values
-            xSlider.setValue(0);
-            ySlider.setValue(0);
-            zSlider.setValue(0);
-            xScaleSlider.setValue(10);
-            yScaleSlider.setValue(10);
-            zScaleSlider.setValue(10);
-            xOffsetSlider.setValue(100);
-            yOffsetSlider.setValue(100);
-            zOffsetSlider.setValue(100);
-            panel.setXOffset(50);
-            panel.setYOffset(50);
-            panel.setXRotation(10);
-            // Number of frames in the animation
-
-
-            Thread t = new Thread(() -> {
-                try {
-                    int frames = 1000;
-                    for (int i = 0; i < frames; i++) {
-                        var ax = panel.getAngleX();
-                        var ay = panel.getAngleY();
-                        var az = panel.getAngleZ();
-                        Random rand = new Random();
-                        panel.setAngleX(ax += 3);
-                        panel.setAngleY(ay += 3);
-                        panel.setAngleZ(az += 3);
-
-                        var xo = panel.getXOffset();
-                        var yo = panel.getYOffset();
-
-
-                        if (i % 100 == 0) {
-                            int randomXOffset = rand.nextInt(21) - 10; // Generates a random number between -10 and 10
-                            int randomYOffset = rand.nextInt(21) - 10;
-                            panel.setXOffset(xo += randomXOffset);
-                            panel.setYOffset(yo += randomYOffset);
-                        }
-
-                        panel.initSceneVerticles(true);
-
-                        Thread.sleep(100);
-
-                        SwingUtilities.invokeAndWait(() -> {
-                            panel.initSceneVerticles(true);
-                            panel.repaint();
-                        });
-                    }
-                } catch (Exception ee) {
-                    ee.printStackTrace();
-                }
-            });
-
-            t.start();
-
-            panel.repaint();
-
-
-        });
-
-        // Add the button to the slider panel
-        sliderPanel.add(button);
-
-
+        panel.initImage();
     }
 
 
