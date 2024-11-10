@@ -26,9 +26,9 @@ public class Main extends JFrame {
         sliderPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         // Create sliders for rotation in x, y, z
-        xSlider = new JSlider(JSlider.HORIZONTAL, 0, 360, 0);
-        ySlider = new JSlider(JSlider.HORIZONTAL, 0, 360, 0);
-        zSlider = new JSlider(JSlider.HORIZONTAL, 0, 360, 0);
+        xSlider = new JSlider(JSlider.HORIZONTAL, 25, 360, 25);
+        ySlider = new JSlider(JSlider.HORIZONTAL, 25, 360, 25);
+        zSlider = new JSlider(JSlider.HORIZONTAL, 25, 360, 25);
 
 // Create sliders for offset in x and y
         xOffsetSlider = new JSlider(JSlider.HORIZONTAL, -500, 500, 0);
@@ -74,7 +74,11 @@ public class Main extends JFrame {
 
         // Add ChangeListener to the sliders
         xSlider.addChangeListener(e -> panel.setXRotation(xSlider.getValue()));
-        ySlider.addChangeListener(e -> panel.setYRotation(ySlider.getValue()));
+        ySlider.addChangeListener(e -> {
+            panel.clearImage(panel.getWidth(), panel.getHeight());
+            panel.setYRotation((double) ySlider.getValue());
+            panel.repaint();
+        });
         zSlider.addChangeListener(e -> panel.setZRotation(zSlider.getValue()));
         xScaleSlider.addChangeListener(e -> panel.setXScale(xScaleSlider.getValue()));
         yScaleSlider.addChangeListener(e -> panel.setYScale(yScaleSlider.getValue()));
@@ -125,7 +129,7 @@ public class Main extends JFrame {
 
         // Add the Drawer panel and the slider panel to the frame
         this.add(panel, BorderLayout.CENTER);
-        this.add(sliderPanel, BorderLayout.LINE_END);
+//        this.add(sliderPanel, BorderLayout.LINE_END);
 
 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

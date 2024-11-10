@@ -12,6 +12,8 @@ public class Model {
 
     private Vector[] vertices;
 
+    private Vector[] transformedVertices;
+
     private int[][] edges;
 
     private int[][] faces;
