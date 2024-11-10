@@ -53,6 +53,7 @@ public class Drawer extends JPanel {
 
         for (Model object : objects) {
             var vertices = object.getVertices();
+            var transformedVertices = object.getTransformedVertices();
             // Loop through each vertex
             for (int i = 0; i < vertices.length; i++) {
                 Vector vertex = vertices[i];
@@ -73,8 +74,9 @@ public class Drawer extends JPanel {
                 // Apply translation transformation
                 vertex = Matrix.multiplyVector(Matrix.getTranslation(offsetX, offsetY, offsetZ), vertex);
 
+
                 // Add the transformed vertex to the sceneVerticles list
-                sceneVerticles.add(vertex);
+                transformedVertices[i] = vertex;
             }
         }
 
@@ -119,32 +121,26 @@ public class Drawer extends JPanel {
 
     @Override
     public void paint(Graphics g) {
-        Oy3d = this.getHeight() / 2;
-        Ox3d = this.getWidth() / 2;
-
         super.paint(g);
 
-        g.setColor(Color.BLACK);
-        long startTime = System.nanoTime();
+        int width = getWidth();
+        int height = getHeight();
 
-//        var gra = image.createGraphics();
-//        gra.clearRect(0, 0, image.getWidth(), image.getHeight());
-//        gra.dispose();
-
-        for (var object : objects) {
-            Vector[] vertices = object.getVertices();
-            Vector[] transformedVertices = new Vector[vertices.length];
-
-            // Применение трансформаций
-            for (int i = 0; i < vertices.length; i++) {
-                Vector vertex = vertices[i];
-                vertex = Matrix.multiplyVector(Matrix.getRotationX(angleX), vertex);
-                vertex = Matrix.multiplyVector(Matrix.getRotationY(angleY), vertex);
-                vertex = Matrix.multiplyVector(Matrix.getRotationZ(angleZ), vertex);
-                vertex = Matrix.multiplyVector(Matrix.getScale(sx, sy, sz), vertex);
-                vertex = Matrix.multiplyVector(Matrix.getTranslation(offsetX, offsetY, offsetZ), vertex);
-                transformedVertices[i] = vertex;
+        if (image == null || image.getWidth() != width || image.getHeight() != height) {
+            image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            zBuffer = new double[width][height];
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    zBuffer[i][j] = Double.NEGATIVE_INFINITY;
+                }
             }
+        }
+        initSceneVerticles(false);
+        clearImage(width, height);
+
+
+        for (Model object : objects) {
+            Vector[] transformedVertices = object.getTransformedVertices();
 
             // Растеризация треугольников
             for (int[] face : object.getFaces()) {
@@ -152,51 +148,28 @@ public class Drawer extends JPanel {
                 Vector v2 = transformedVertices[face[1]];
                 Vector v3 = transformedVertices[face[2]];
 
-
-                if (image != null) {
-                    Graphics2D graphics2D = image.createGraphics();
-                    drawTriangle(graphics2D, zBuffer, v1, v2, v3, object.getColor());
-                    graphics2D.dispose();
-                }
+                drawTriangle(image.createGraphics(), zBuffer, v1, v2, v3, object.getColor());
             }
 
-//            for (var edge : object.getEdges()) {
-//                var firstProjection = project(sceneVerticles.get(edge[0]).getX(),
-//                      sceneVerticles.get(edge[0]).getY(),
-//                      sceneVerticles.get(edge[0]).getZ());
-//
-//                var secondProjection = project(sceneVerticles.get(edge[1]).getX(),
-//                      sceneVerticles.get(edge[1]).getY(),
-//                      object.getVertices()[edge[1]].getZ());
-//
-//                if (image != null) {
-//                    Graphics2D graphics2D = image.createGraphics();
-//                    drawLine(graphics2D, zBuffer, firstProjection, secondProjection, object.getVertices()[edge[0]].getZ(), object.getVertices()[edge[1]].getZ());
-//                    graphics2D.dispose();
-//                }
-//            }
+            // Растеризация ребер
+            for (int[] edge : object.getEdges()) {
+                Vector v1 = transformedVertices[edge[0]];
+                Vector v2 = transformedVertices[edge[1]];
 
-            for (var edge : object.getEdges()) {
-                var firstProjection = project(sceneVerticles.get(edge[0]).getX(),
-                      sceneVerticles.get(edge[0]).getY(),
-                      sceneVerticles.get(edge[0]).getZ());
-
-                var secondProjection = project(sceneVerticles.get(edge[1]).getX(),
-                      sceneVerticles.get(edge[1]).getY(),
-                      sceneVerticles.get(edge[1]).getZ());
+                double[] p1 = project(v1.getX(), v1.getY(), v1.getZ());
+                double[] p2 = project(v2.getX(), v2.getY(), v2.getZ());
 
                 Graphics2D graphics2D = image.createGraphics();
-                graphics2D.drawLine((int)firstProjection[0], (int)firstProjection[1], (int)secondProjection[0], (int)secondProjection[1]);
+                drawLineWithZBuffer(graphics2D, zBuffer, p1, p2, v1.getZ(), v2.getZ(), Color.DARK_GRAY);
+                graphics2D.setColor(Color.lightGray);
+                graphics2D.setStroke(new BasicStroke(0.05f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+//                graphics2D.drawLine((int) p1[0], (int) p1[1], (int) p2[0], (int) p2[1]);
                 graphics2D.dispose();
             }
         }
 
-        int width = getWidth();
-        int height = getHeight();
-
-        g.drawImage(image, 00, 00, null);
+        g.drawImage(image, 0, 0, null);
         saveImageToDesktop(image, "image.png");
-
 
         // Ось X
         g.setColor(Color.RED);
@@ -214,11 +187,15 @@ public class Drawer extends JPanel {
         g.drawString("X", width / 2 + 20, height / 2);
         g.drawString("Y", width / 2, height / 2 - 20);
         g.drawString("Z", width / 2, height / 2 + 20);
-
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime);  // divide by 1000000 to get milliseconds.
-        System.out.println("Drawing operation took " + duration + " nanoseconds");
     }
+
+    public void clearImage(int width, int height) {
+        Graphics2D gra = image.createGraphics();
+        gra.setColor(Color.WHITE);
+        gra.fillRect(0, 0, width, height);
+        gra.dispose();
+    }
+
 
     private double[] project(double x, double y, double z) {
         Vector point = new Vector(x, y, z, 1);
@@ -250,6 +227,7 @@ public class Drawer extends JPanel {
                     if (x >= 0 && x < zBuffer.length && y >= 0 && y < zBuffer[0].length) {
                         if (z > zBuffer[x][y]) {
                             zBuffer[x][y] = z;
+                            System.out.println("Z-Buffer updated at (" + x + ", " + y + "): " + z);
                             g.setColor(color);
                             g.drawLine(x, y, x, y);
                         }
@@ -259,28 +237,29 @@ public class Drawer extends JPanel {
         }
     }
 
-    private static void drawLine(Graphics2D g, double[][] zBuffer, double[] p1, double[] p2, double z1, double z2) {
-        double x1 = p1[0], y1 = p1[1];
-        double x2 = p2[0], y2 = p2[1];
+    private void drawLineWithZBuffer(Graphics2D g, double[][] zBuffer, double[] p1, double[] p2, double z1, double z2, Color color) {
+        int x1 = (int) p1[0], y1 = (int) p1[1];
+        int x2 = (int) p2[0], y2 = (int) p2[1];
 
-        double dx = Math.abs(x2 - x1);
-        double dy = Math.abs(y2 - y1);
+        int dx = Math.abs(x2 - x1);
+        int dy = Math.abs(y2 - y1);
         int sx = x1 < x2 ? 1 : -1;
         int sy = y1 < y2 ? 1 : -1;
-        double err = dx - dy;
+        int err = dx - dy;
 
-        while (true) {
+        int steps = Math.max(dx, dy);
+
+        for (int i = 0; i <= steps; i++) {
             if (x1 >= 0 && x1 < zBuffer.length && y1 >= 0 && y1 < zBuffer[0].length) {
-                double z = z1 + (z2 - z1) * (Math.abs(x1 - x2) / (double) dx);
-                if (z > zBuffer[(int) x1][(int) y1]) {
-                    zBuffer[(int) x1][(int) y1] = z;
-                    g.setColor(Color.BLACK);
-                    g.drawLine((int) x1, (int) y1, (int) x1, (int) y1);
+                double z = z1 + (z2 - z1) * (i / (double) steps);
+                if (z >= zBuffer[x1][y1]) {
+                    zBuffer[x1][y1] = z;
+                    g.setColor(color);
+                    g.drawLine(x1, y1, x1, y1);
                 }
             }
 
-            if (x1 == x2 && y1 == y2) break;
-            double e2 = 2 * err;
+            int e2 = 2 * err;
             if (e2 > -dy) {
                 err -= dy;
                 x1 += sx;
@@ -291,6 +270,8 @@ public class Drawer extends JPanel {
             }
         }
     }
+
+
 
 
     private static int[][] generateTetrahedronEdges(int i) {
@@ -315,18 +296,18 @@ public class Drawer extends JPanel {
         offset = random.nextDouble(50) - offset;
 
 
-//        return new Vector[]{
-//              new Vector(random.nextInt(4) - 2, +random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-//              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-//              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-//              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset)
-//        };
         return new Vector[]{
-              new Vector(random.nextInt(4) - 2, +random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset, random.nextInt(4) - 2 + random.nextDouble(30) - offset)
+              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30))
         };
+//        return new Vector[]{
+//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
+//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
+//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
+//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2)
+//        };
     }
 
 
@@ -342,16 +323,16 @@ public class Drawer extends JPanel {
             Vector[] vertices = generateTetrahedronVertices(i);
             int[][] edges = generateTetrahedronEdges(i);
             int[][] faces = generateTetrahedronFaces(i);
-            objects.add(new Model(vertices, edges, faces, colors[i]));
+            objects.add(new Model(vertices, vertices, edges, faces, colors[i]));
         }
 
 
         colouredBuffer = new int[getWidth()];
 
 
-        this.sx = 5;
-        this.sy = 5;
-        this.sz = 5;
+        this.sx = 2;
+        this.sy = 2;
+        this.sz = 2;
         this.angleX = 0;
         this.angleY = 0;
         this.angleZ = 0;
