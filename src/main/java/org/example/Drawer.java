@@ -7,11 +7,13 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.Buffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -217,9 +219,9 @@ public class Drawer extends JPanel {
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
                 double alpha = (double) ((y - p2[1]) * (p3[0] - p2[0]) - (x - p2[0]) * (p3[1] - p2[1])) /
-                      ((p1[1] - p2[1]) * (p3[0] - p2[0]) - (p1[0] - p2[0]) * (p3[1] - p2[1]));
+                        ((p1[1] - p2[1]) * (p3[0] - p2[0]) - (p1[0] - p2[0]) * (p3[1] - p2[1]));
                 double beta = (double) ((y - p1[1]) * (p3[0] - p1[0]) - (x - p1[0]) * (p3[1] - p1[1])) /
-                      ((p2[1] - p1[1]) * (p3[0] - p1[0]) - (p2[0] - p1[0]) * (p3[1] - p1[1]));
+                        ((p2[1] - p1[1]) * (p3[0] - p1[0]) - (p2[0] - p1[0]) * (p3[1] - p1[1]));
                 double gamma = 1.0 - alpha - beta;
 
                 if (alpha >= 0 && beta >= 0 && gamma >= 0) {
@@ -272,21 +274,19 @@ public class Drawer extends JPanel {
     }
 
 
-
-
     private static int[][] generateTetrahedronEdges(int i) {
         int offset = 4 * 0;
         return new int[][]{
-              {offset, 1 + offset}, {offset, 2 + offset}, {offset, 3 + offset},
-              {1 + offset, 2 + offset}, {1 + offset, 3 + offset}, {2 + offset, 3 + offset}
+                {offset, 1 + offset}, {offset, 2 + offset}, {offset, 3 + offset},
+                {1 + offset, 2 + offset}, {1 + offset, 3 + offset}, {2 + offset, 3 + offset}
         };
     }
 
     private static int[][] generateTetrahedronFaces(int i) {
         int offset = 4 * 0;
         return new int[][]{
-              {offset, 1 + offset, 2 + offset}, {offset, 1 + offset, 3 + offset}, {offset, 2 + offset, 3 + offset},
-              {1 + offset, 2 + offset, 3 + offset}
+                {offset, 1 + offset, 2 + offset}, {offset, 1 + offset, 3 + offset}, {offset, 2 + offset, 3 + offset},
+                {1 + offset, 2 + offset, 3 + offset}
         };
     }
 
@@ -297,19 +297,31 @@ public class Drawer extends JPanel {
 
 
         return new Vector[]{
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
-              new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30))
+                new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+                new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+                new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30)),
+                new Vector(random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30) + offset, random.nextInt(4) - 2 + random.nextDouble(30))
         };
-//        return new Vector[]{
-//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
-//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
-//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2),
-//              new Vector(random.nextInt(4) - 2, random.nextInt(4) - 2, random.nextInt(4) - 2)
-//        };
     }
 
+    private Vector[] readVerticesFromFile(String filepath) {
+        try {
+            List<Vector> vectors = new ArrayList<>();
+            BufferedReader reader = new BufferedReader(new FileReader(filepath));
+
+            String line = reader.readLine();
+            String[] dots = line.split("; ");
+            dots = Arrays.stream(dots).map(dot -> dot.replaceAll("[\\(|\\)]", ""))
+                    .toList().toArray(new String[4]);
+            for (String dot : dots) {
+                String[] coordin = dot.split(", ");
+                vectors.add(new Vector(Double.parseDouble(coordin[0]), Double.parseDouble(coordin[1]), Double.parseDouble(coordin[2]), 1));
+            }
+            return vectors.toArray(new Vector[5]);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public Drawer() {
         super();
@@ -321,6 +333,7 @@ public class Drawer extends JPanel {
         //Static define of objects count
         for (int i = 0; i < 5; i++) {
             Vector[] vertices = generateTetrahedronVertices(i);
+//            Vector[] vertices = readVerticesFromFile("init.txt");
             int[][] edges = generateTetrahedronEdges(i);
             int[][] faces = generateTetrahedronFaces(i);
             objects.add(new Model(vertices, vertices, edges, faces, colors[i]));
@@ -341,20 +354,20 @@ public class Drawer extends JPanel {
         this.offsetY = 50;
 
         rotationMatrix = new double[][]{
-              {Math.cos(angleRad), 0, Math.sin(angleRad), 0},
-              {0, 1, 0, 0},
-              {-Math.sin(angleRad), 0, Math.cos(angleRad), 0},
-              {0, 0, 0, 1}
+                {Math.cos(angleRad), 0, Math.sin(angleRad), 0},
+                {0, 1, 0, 0},
+                {-Math.sin(angleRad), 0, Math.cos(angleRad), 0},
+                {0, 0, 0, 1}
         };
 
         double sqrt3 = Math.sqrt(3);
 
         // Матрица ортографического проецирования
         projectionMatrix = new double[][]{
-              {1, 0, -1 / sqrt3, 0},
-              {0, 1, -1 / sqrt3, 0},
-              {0, 0, 0, 0},
-              {0, 0, 0, 1}
+                {1, 0, -1 / sqrt3, 0},
+                {0, 1, -1 / sqrt3, 0},
+                {0, 0, 0, 0},
+                {0, 0, 0, 1}
         };
 
         initSceneVerticles(false);
